@@ -14,10 +14,9 @@ use rapier3d::geometry::{ColliderSet, DefaultBroadPhase, NarrowPhase};
 use rapier3d::glamx::IVec3;
 use rapier3d::math::Vec3;
 use rapier3d::pipeline::PhysicsPipeline;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 pub type LevelColliderID = usize;
 
@@ -37,17 +36,15 @@ pub fn pack_section_pos(i: i32, j: i32, k: i32) -> i64 {
 
 pub type ChunkMap = HashMap<i64, ChunkSection>;
 
-pub struct ReportedCollisionBuffer(RefCell<Vec<ReportedCollision>>);
-
-unsafe impl Sync for ReportedCollisionBuffer {}
+pub struct ReportedCollisionBuffer(Mutex<Vec<ReportedCollision>>);
 
 impl ReportedCollisionBuffer {
     pub fn new() -> Self {
-        Self(RefCell::new(Vec::with_capacity(16)))
+        Self(Mutex::new(Vec::with_capacity(16)))
     }
 
-    pub fn borrow_mut(&self) -> std::cell::RefMut<'_, Vec<ReportedCollision>> {
-        self.0.borrow_mut()
+    pub fn borrow_mut(&self) -> std::sync::MutexGuard<'_, Vec<ReportedCollision>> {
+        self.0.lock().unwrap()
     }
 }
 
@@ -97,7 +94,7 @@ pub struct PhysicsScene {
 
     pub manifold_info_map: Arc<SableManifoldInfoMap>,
 
-    pub current_step_vm: Option<Arc<std::mem::ManuallyDrop<JavaVM>>>,
+    pub current_step_vm: Option<Arc<JavaVM>>,
 
     /// The handle to a static rigidbody
     pub ground_handle: Option<RigidBodyHandle>,

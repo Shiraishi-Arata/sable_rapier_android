@@ -34,7 +34,10 @@ macro_rules! jni_scene_fn {
                 handle: ::jni::sys::jlong,
                 $($extra)*
             ) {
-                let $scene = unsafe { &*(handle as *const $crate::scene::PhysicsScene) };
+                let __arc = unsafe { ::std::sync::Arc::from_raw(handle as *const $crate::scene::PhysicsScene) };
+                let __cloned = __arc.clone();
+                ::std::mem::forget(__arc);
+                let $scene = &*__cloned;
                 $body
             }
 
@@ -66,7 +69,10 @@ macro_rules! jni_scene_fn_ret {
                 handle: ::jni::sys::jlong,
                 $($extra)*
             ) -> $ret {
-                let $scene = unsafe { &*(handle as *const $crate::scene::PhysicsScene) };
+                let __arc = unsafe { ::std::sync::Arc::from_raw(handle as *const $crate::scene::PhysicsScene) };
+                let __cloned = __arc.clone();
+                ::std::mem::forget(__arc);
+                let $scene = &*__cloned;
                 $body
             }
 
@@ -435,8 +441,7 @@ fn initialize_impl<'local>(
     }));
     let manifold_info_map = Arc::new(SableManifoldInfoMap::default());
     let reported_collisions = Arc::new(ReportedCollisionBuffer::new());
-    use std::mem::ManuallyDrop;
-    let current_step_vm = Some(Arc::new(ManuallyDrop::new(env.get_java_vm().unwrap())));
+    let current_step_vm = Some(Arc::new(env.get_java_vm().unwrap()));
 
     let dispatcher = SableDispatcher {
         sable_data: Arc::clone(&sable_data),
@@ -1325,7 +1330,7 @@ macro_rules! v1nm {
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn JNI_OnLoad(
+pub unsafe extern "system" fn JNI_OnLoad(
     vm: *mut ::jni::sys::JavaVM,
     _: *mut std::ffi::c_void,
 ) -> ::jni::sys::jint {
@@ -1400,6 +1405,5 @@ pub extern "system" fn JNI_OnLoad(
         let _ = env.register_native_methods(class, &methods);
     }
 
-    std::mem::forget(vm);
     ::jni::sys::JNI_VERSION_1_6
 }

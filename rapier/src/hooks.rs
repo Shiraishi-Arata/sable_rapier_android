@@ -17,7 +17,7 @@ use crate::scene::{LevelColliderID, SableManifoldInfoMap, SableSceneData};
 pub struct SablePhysicsHooks {
     pub sable_data: Arc<RwLock<SableSceneData>>,
     pub manifold_info_map: Arc<SableManifoldInfoMap>,
-    pub current_step_vm: Option<Arc<std::mem::ManuallyDrop<JavaVM>>>,
+    pub current_step_vm: Option<Arc<JavaVM>>,
 }
 
 impl PhysicsHooks for SablePhysicsHooks {
@@ -261,7 +261,7 @@ impl SablePhysicsHooks {
             ]
         };
 
-        let args: Vec<jvalue> = args.iter().map(|v| v.as_jni()).collect();
+        let args: Vec<jvalue> = args.iter().map(|v| JValue::as_jni(v)).collect();
 
         let mut env = current_step_vm
             .attach_current_thread_as_daemon()

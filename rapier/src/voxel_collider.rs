@@ -43,7 +43,7 @@ impl VoxelColliderMap {
 pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_newVoxelCollider<
     'local,
 >(
-    mut env: JNIEnv<'static>,
+    mut env: JNIEnv<'local>,
     _class: JClass<'local>,
     friction: jdouble,
     volume: jdouble,
