@@ -31,6 +31,17 @@ macro_rules! jni_scene_fn {
             pub extern "system" fn $name<'local>(
                 $env: ::jni::JNIEnv<'local>,
                 _class: ::jni::objects::JClass<'local>,
+                handle: ::jni::sys::jlong,
+                $($extra)*
+            ) {
+                let $scene = unsafe { &*(handle as *const $crate::scene::PhysicsScene) };
+                $body
+            }
+
+            #[unsafe(no_mangle)]
+            pub extern "system" fn [<$name _v1>] <'local>(
+                $env: ::jni::JNIEnv<'local>,
+                _class: ::jni::objects::JClass<'local>,
                 scene_id: ::jni::sys::jint,
                 $($extra)*
             ) {
@@ -38,17 +49,6 @@ macro_rules! jni_scene_fn {
                     .get_or_init(|| ::std::sync::RwLock::new(::std::collections::HashMap::new()));
                 let __guard = __guard.read().unwrap();
                 let $scene: &$crate::scene::PhysicsScene = &*__guard.get(&(scene_id as i32)).unwrap();
-                $body
-            }
-
-            #[unsafe(no_mangle)]
-            pub extern "system" fn [<$name _v2>] <'local>(
-                $env: ::jni::JNIEnv<'local>,
-                _class: ::jni::objects::JClass<'local>,
-                handle: ::jni::sys::jlong,
-                $($extra)*
-            ) {
-                let $scene = unsafe { &*(handle as *const $crate::scene::PhysicsScene) };
                 $body
             }
         }
@@ -63,6 +63,17 @@ macro_rules! jni_scene_fn_ret {
             pub extern "system" fn $name<'local>(
                 $env: ::jni::JNIEnv<'local>,
                 _class: ::jni::objects::JClass<'local>,
+                handle: ::jni::sys::jlong,
+                $($extra)*
+            ) -> $ret {
+                let $scene = unsafe { &*(handle as *const $crate::scene::PhysicsScene) };
+                $body
+            }
+
+            #[unsafe(no_mangle)]
+            pub extern "system" fn [<$name _v1>] <'local>(
+                $env: ::jni::JNIEnv<'local>,
+                _class: ::jni::objects::JClass<'local>,
                 scene_id: ::jni::sys::jint,
                 $($extra)*
             ) -> $ret {
@@ -70,17 +81,6 @@ macro_rules! jni_scene_fn_ret {
                     .get_or_init(|| ::std::sync::RwLock::new(::std::collections::HashMap::new()));
                 let __guard = __guard.read().unwrap();
                 let $scene: &$crate::scene::PhysicsScene = &*__guard.get(&(scene_id as i32)).unwrap();
-                $body
-            }
-
-            #[unsafe(no_mangle)]
-            pub extern "system" fn [<$name _v2>] <'local>(
-                $env: ::jni::JNIEnv<'local>,
-                _class: ::jni::objects::JClass<'local>,
-                handle: ::jni::sys::jlong,
-                $($extra)*
-            ) -> $ret {
-                let $scene = unsafe { &*(handle as *const $crate::scene::PhysicsScene) };
                 $body
             }
         }
@@ -489,6 +489,19 @@ fn initialize_impl<'local>(
 pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_initialize<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
+    x: jdouble,
+    y: jdouble,
+    z: jdouble,
+    universal_drag: jdouble,
+) -> jlong {
+    let scene = initialize_impl(&mut env, x, y, z, universal_drag);
+    Arc::into_raw(scene) as jlong
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_initialize_v1<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
     scene_id: jint,
     x: jdouble,
     y: jdouble,
@@ -501,30 +514,7 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_ini
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_initialize_v2<'local>(
-    mut env: JNIEnv<'local>,
-    _class: JClass<'local>,
-    x: jdouble,
-    y: jdouble,
-    z: jdouble,
-    universal_drag: jdouble,
-) -> jlong {
-    let scene = initialize_impl(&mut env, x, y, z, universal_drag);
-    Arc::into_raw(scene) as jlong
-}
-
-#[unsafe(no_mangle)]
 pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_dispose<'local>(
-    _env: JNIEnv<'local>,
-    _class: JClass<'local>,
-) {
-    if let Some(scenes) = SCENES.get() {
-        scenes.write().unwrap().clear();
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_dispose_v2<'local>(
     _env: JNIEnv<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -533,6 +523,16 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_dis
         unsafe {
             drop(Arc::from_raw(handle as *const PhysicsScene));
         }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_dispose_v1<'local>(
+    _env: JNIEnv<'local>,
+    _class: JClass<'local>,
+) {
+    if let Some(scenes) = SCENES.get() {
+        scenes.write().unwrap().clear();
     }
 }
 
@@ -1349,55 +1349,52 @@ pub extern "system" fn JNI_OnLoad(
 
     if !is_v2 {
         let _ = env.exception_clear();
-    } else {
         let methods = vec![
-            v1nm!("initialize", "(DDDD)J", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_initialize_v2),
-            v1nm!("dispose", "(J)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_dispose_v2),
-            v1nm!("tick", "(JD)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_tick_v2),
-            v1nm!("step", "(JD)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_step_v2),
-            v1nm!("getPose", "(JI[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_getPose_v2),
-            v1nm!("setCenterOfMass", "(JIDDD)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setCenterOfMass_v2),
-            v1nm!("setLocalBounds", "(JIIIIIII)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setLocalBounds_v2),
-            v1nm!("clearCollisions", "(J)[D", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_clearCollisions_v2),
-            v1nm!("getLinearVelocity", "(JI[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_getLinearVelocity_v2),
-            v1nm!("getAngularVelocity", "(JI[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_getAngularVelocity_v2),
-            v1nm!("addLinearAngularVelocities", "(JIDDDDDDZ)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addLinearAngularVelocities_v2),
-            v1nm!("applyForce", "(JIDDDDDDZ)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_applyForce_v2),
-            v1nm!("applyForceAndTorque", "(JIDDDDDDZ)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_applyForceAndTorque_v2),
-            v1nm!("teleportObject", "(JIDDDDDDD)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_teleportObject_v2),
-            v1nm!("wakeUpObject", "(JI)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_wakeUpObject_v2),
-            v1nm!("setMassProperties", "(JID[D[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setMassProperties_v2),
-            v1nm!("changeBlock", "(JIIII)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_changeBlock_v2),
-            v1nm!("addChunk", "(JIII[IZI)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addChunk_v2),
-            v1nm!("removeChunk", "(JIIIZ)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeChunk_v2),
-            v1nm!("createSubLevel", "(JI[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_createSubLevel_v2),
-            v1nm!("removeSubLevel", "(JI)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeSubLevel_v2),
-            v1nm!("createBox", "(JIDDDD[D)V", crate::boxes::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_createBox_v2),
-            v1nm!("removeBox", "(JI)V", crate::boxes::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeBox_v2),
-            v1nm!("createKinematicContraption", "(JII[D)V", crate::contraptions::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_createKinematicContraption_v2),
-            v1nm!("setKinematicContraptionTransform", "(JI[D[D[D)V", crate::contraptions::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setKinematicContraptionTransform_v2),
-            v1nm!("addKinematicContraptionChunkSection", "(JIIII[I)V", crate::contraptions::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addKinematicContraptionChunkSection_v2),
-            v1nm!("removeKinematicContraption", "(JI)V", crate::contraptions::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeKinematicContraption_v2),
-            v1nm!("setConstraintMotor", "(JJIDDDZD)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setConstraintMotor_v2),
-            v1nm!("setConstraintLimit", "(JJIDD)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setConstraintLimit_v2),
-            v1nm!("lockConstraintAxes", "(JJB)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_lockConstraintAxes_v2),
-            v1nm!("isConstraintValid", "(JJ)Z", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_isConstraintValid_v2),
-            v1nm!("getConstraintImpulses", "(JJ[D)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_getConstraintImpulses_v2),
-            v1nm!("setConstraintContactsEnabled", "(JJZ)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setConstraintContactsEnabled_v2),
-            v1nm!("removeConstraint", "(JJ)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeConstraint_v2),
-            v1nm!("addRotaryConstraint", "(JIIDDDDDDDDDDDD)J", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addRotaryConstraint_v2),
-            v1nm!("addFixedConstraint", "(JIIDDDDDDDDDD)J", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addFixedConstraint_v2),
-            v1nm!("addFreeConstraint", "(JIIDDDDDDDDDDDDDDI)J", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addFreeConstraint_v2),
-            v1nm!("addGenericConstraint", "(JIIDDDDDDDDDDDDDDI)J", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addGenericConstraint_v2),
-            v1nm!("setConstraintFrame", "(JJIDDDDDDD)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setConstraintFrame_v2),
-            v1nm!("createRope", "(JDD[DI)J", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_createRope_v2),
-            v1nm!("queryRope", "(JJ)[D", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_queryRope_v2),
-            v1nm!("removeRope", "(JJ)J", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeRope_v2),
-            v1nm!("setRopeFirstSegmentLength", "(JJD)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setRopeFirstSegmentLength_v2),
-            v1nm!("removeRopePointAtStart", "(JJ)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeRopePointAtStart_v2),
-            v1nm!("addRopePointAtStart", "(JJDDD)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addRopePointAtStart_v2),
-            v1nm!("wakeUpRope", "(JJ)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_wakeUpRope_v2),
-            v1nm!("setRopeAttachment", "(JJIDDDZ)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setRopeAttachment_v2),
+            v1nm!("initialize", "(IDDDD)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_initialize_v1),
+            v1nm!("dispose", "()V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_dispose_v1),
+            v1nm!("tick", "(ID)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_tick_v1),
+            v1nm!("step", "(ID)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_step_v1),
+            v1nm!("getPose", "(II[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_getPose_v1),
+            v1nm!("setCenterOfMass", "(IIDDD)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setCenterOfMass_v1),
+            v1nm!("setLocalBounds", "(IIIIIIII)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setLocalBounds_v1),
+            v1nm!("clearCollisions", "(I)[D", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_clearCollisions_v1),
+            v1nm!("getLinearVelocity", "(II[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_getLinearVelocity_v1),
+            v1nm!("getAngularVelocity", "(II[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_getAngularVelocity_v1),
+            v1nm!("addLinearAngularVelocities", "(IIDDDDDDZ)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addLinearAngularVelocities_v1),
+            v1nm!("applyForce", "(IIDDDDDDZ)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_applyForce_v1),
+            v1nm!("applyForceAndTorque", "(IIDDDDDDZ)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_applyForceAndTorque_v1),
+            v1nm!("teleportObject", "(IIDDDDDDD)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_teleportObject_v1),
+            v1nm!("wakeUpObject", "(II)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_wakeUpObject_v1),
+            v1nm!("setMassProperties", "(IID[D[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setMassProperties_v1),
+            v1nm!("changeBlock", "(IIIII)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_changeBlock_v1),
+            v1nm!("addChunk", "(IIII[IZI)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addChunk_v1),
+            v1nm!("removeChunk", "(IIIIZ)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeChunk_v1),
+            v1nm!("createSubLevel", "(II[D)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_createSubLevel_v1),
+            v1nm!("removeSubLevel", "(II)V", crate::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeSubLevel_v1),
+            v1nm!("createBox", "(IIDDDD[D)V", crate::boxes::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_createBox_v1),
+            v1nm!("removeBox", "(II)V", crate::boxes::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeBox_v1),
+            v1nm!("createKinematicContraption", "(III[D)V", crate::contraptions::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_createKinematicContraption_v1),
+            v1nm!("setKinematicContraptionTransform", "(II[D[D[D)V", crate::contraptions::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setKinematicContraptionTransform_v1),
+            v1nm!("addKinematicContraptionChunkSection", "(IIIII[I)V", crate::contraptions::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addKinematicContraptionChunkSection_v1),
+            v1nm!("removeKinematicContraption", "(II)V", crate::contraptions::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeKinematicContraption_v1),
+            v1nm!("setConstraintMotor", "(IJIDDDZD)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setConstraintMotor_v1),
+            v1nm!("isConstraintValid", "(IJ)Z", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_isConstraintValid_v1),
+            v1nm!("getConstraintImpulses", "(IJ[D)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_getConstraintImpulses_v1),
+            v1nm!("setConstraintContactsEnabled", "(IJZ)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setConstraintContactsEnabled_v1),
+            v1nm!("removeConstraint", "(IJ)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeConstraint_v1),
+            v1nm!("addRotaryConstraint", "(IIIDDDDDDDDDDDD)J", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addRotaryConstraint_v1),
+            v1nm!("addFixedConstraint", "(IIIDDDDDDDDDD)J", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addFixedConstraint_v1),
+            v1nm!("addFreeConstraint", "(IIIDDDDDDDDDD)J", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addFreeConstraint_v1),
+            v1nm!("addGenericConstraint", "(IIIDDDDDDDDDDDDDDI)J", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addGenericConstraint_v1),
+            v1nm!("setConstraintFrame", "(IJIDDDDDDD)V", crate::joints::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setConstraintFrame_v1),
+            v1nm!("createRope", "(IDD[DI)J", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_createRope_v1),
+            v1nm!("queryRope", "(IJ)[D", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_queryRope_v1),
+            v1nm!("removeRope", "(IJ)J", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeRope_v1),
+            v1nm!("setRopeFirstSegmentLength", "(IJD)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setRopeFirstSegmentLength_v1),
+            v1nm!("removeRopePointAtStart", "(IJ)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeRopePointAtStart_v1),
+            v1nm!("addRopePointAtStart", "(IJDDD)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addRopePointAtStart_v1),
+            v1nm!("wakeUpRope", "(IJ)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_wakeUpRope_v1),
+            v1nm!("setRopeAttachment", "(IJIDDDZ)V", crate::rope::Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setRopeAttachment_v1),
         ];
 
         let _ = env.register_native_methods(class, &methods);

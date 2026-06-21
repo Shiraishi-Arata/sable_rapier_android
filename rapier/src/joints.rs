@@ -140,61 +140,7 @@ crate::jni_scene_fn! {
 }
 
 #[unsafe(no_mangle)]
-fn set_constraint_limit_impl(scene: &PhysicsScene, joint_id: jlong, axis: jint, min: jdouble, max: jdouble) {
-    let sable_data = scene.sable_data.read().unwrap();
-    let mut sim_data = scene.sim_data.write().unwrap();
-
-    let Some(joint) = sable_data.joint_set.joints.get(&joint_id) else {
-        return;
-    };
-
-    let data = &mut sim_data
-        .impulse_joint_set
-        .get_mut(joint.handle, false)
-        .unwrap()
-        .data;
-
-    data.set_limits(AXES[axis as usize], [min as Real, max as Real]);
-}
-
-fn lock_constraint_axes_impl(scene: &PhysicsScene, joint_id: jlong, mask: jbyte) {
-    let sable_data = scene.sable_data.read().unwrap();
-    let mut sim_data = scene.sim_data.write().unwrap();
-
-    let Some(joint) = sable_data.joint_set.joints.get(&joint_id) else {
-        return;
-    };
-
-    let data = &mut sim_data
-        .impulse_joint_set
-        .get_mut(joint.handle, false)
-        .unwrap()
-        .data;
-
-    data.lock_axes(JointAxesMask::from_bits(mask as u8).expect("Invalid mask!"));
-}
-
-#[unsafe(no_mangle)]
 pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setConstraintLimit<
-    'local,
->(
-    _env: JNIEnv<'local>,
-    _class: JClass<'local>,
-    scene_id: jint,
-    joint_id: jlong,
-    axis: jint,
-    min: jdouble,
-    max: jdouble,
-) {
-    let __scenes = crate::SCENES
-        .get_or_init(|| ::std::sync::RwLock::new(::std::collections::HashMap::new()));
-    let __guard = __scenes.read().unwrap();
-    let scene: &crate::scene::PhysicsScene = &*__guard.get(&(scene_id as i32)).unwrap();
-    set_constraint_limit_impl(scene, joint_id, axis, min, max);
-}
-
-#[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_setConstraintLimit_v2<
     'local,
 >(
     _env: JNIEnv<'local>,
@@ -205,7 +151,22 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_set
     min: jdouble,
     max: jdouble,
 ) {
-    with_handle(handle, |scene| set_constraint_limit_impl(scene, joint_id, axis, min, max));
+    with_handle(handle, |scene| {
+        let sable_data = scene.sable_data.read().unwrap();
+        let mut sim_data = scene.sim_data.write().unwrap();
+
+        let Some(joint) = sable_data.joint_set.joints.get(&joint_id) else {
+            return;
+        };
+
+        let data = &mut sim_data
+            .impulse_joint_set
+            .get_mut(joint.handle, false)
+            .unwrap()
+            .data;
+
+        data.set_limits(AXES[axis as usize], [min as Real, max as Real]);
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -214,28 +175,26 @@ pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_loc
 >(
     _env: JNIEnv<'local>,
     _class: JClass<'local>,
-    scene_id: jint,
-    joint_id: jlong,
-    mask: jbyte,
-) {
-    let __scenes = crate::SCENES
-        .get_or_init(|| ::std::sync::RwLock::new(::std::collections::HashMap::new()));
-    let __guard = __scenes.read().unwrap();
-    let scene: &crate::scene::PhysicsScene = &*__guard.get(&(scene_id as i32)).unwrap();
-    lock_constraint_axes_impl(scene, joint_id, mask);
-}
-
-#[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_lockConstraintAxes_v2<
-    'local,
->(
-    _env: JNIEnv<'local>,
-    _class: JClass<'local>,
     handle: jlong,
     joint_id: jlong,
     mask: jbyte,
 ) {
-    with_handle(handle, |scene| lock_constraint_axes_impl(scene, joint_id, mask));
+    with_handle(handle, |scene| {
+        let sable_data = scene.sable_data.read().unwrap();
+        let mut sim_data = scene.sim_data.write().unwrap();
+
+        let Some(joint) = sable_data.joint_set.joints.get(&joint_id) else {
+            return;
+        };
+
+        let data = &mut sim_data
+            .impulse_joint_set
+            .get_mut(joint.handle, false)
+            .unwrap()
+            .data;
+
+        data.lock_axes(JointAxesMask::from_bits(mask as u8).expect("Invalid mask!"));
+    })
 }
 
 crate::jni_scene_fn_ret! {
@@ -435,7 +394,7 @@ crate::jni_scene_fn_ret! {
 }
 
 crate::jni_scene_fn_ret! {
-    Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addFreeConstraint; _env, (id_a: jint, id_b: jint, local_x_a: jdouble, local_y_a: jdouble, local_z_a: jdouble, local_q_x_a: jdouble, local_q_y_a: jdouble, local_q_z_a: jdouble, local_q_w_a: jdouble, local_x_b: jdouble, local_y_b: jdouble, local_z_b: jdouble, local_q_x_b: jdouble, local_q_y_b: jdouble, local_q_z_b: jdouble, local_q_w_b: jdouble, locked_axes_mask: jint), -> SableJointHandle, scene, {
+    Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addFreeConstraint; _env, (id_a: jint, id_b: jint, local_x_a: jdouble, local_y_a: jdouble, local_z_a: jdouble, local_x_b: jdouble, local_y_b: jdouble, local_z_b: jdouble, local_q_x: jdouble, local_q_y: jdouble, local_q_z: jdouble, local_q_w: jdouble), -> SableJointHandle, scene, {
         let mut sable_data = scene.sable_data.write().unwrap();
         let mut sim_data = scene.sim_data.write().unwrap();
 
@@ -451,27 +410,17 @@ crate::jni_scene_fn_ret! {
             sable_data.rigid_bodies[&(id_b as LevelColliderID)]
         };
 
-        let locked_axes = JointAxesMask::from_bits_truncate(locked_axes_mask as u8);
-
-        let rotation_a = Quat::from_xyzw(
-            local_q_x_a as Real,
-            local_q_y_a as Real,
-            local_q_z_a as Real,
-            local_q_w_a as Real,
-        );
-        let rotation_b = Quat::from_xyzw(
-            local_q_x_b as Real,
-            local_q_y_b as Real,
-            local_q_z_b as Real,
-            local_q_w_b as Real,
+        let mut joint = GenericJointBuilder::new(JointAxesMask::empty()).softness(
+            SpringCoefficients::new(JOINT_SPRING_FREQUENCY, JOINT_SPRING_DAMPING_RATIO),
         );
 
-        let mut joint = GenericJointBuilder::new(locked_axes).softness(SpringCoefficients::new(
-            JOINT_SPRING_FREQUENCY,
-            JOINT_SPRING_DAMPING_RATIO,
-        ));
-        joint.0.local_frame1.rotation = rotation_a;
-        joint.0.local_frame2.rotation = rotation_b;
+        let quat = Quat::from_xyzw(
+            local_q_x as Real,
+            local_q_y as Real,
+            local_q_z as Real,
+            local_q_w as Real,
+        );
+        joint.0.local_frame1.rotation = quat;
 
         let handle = sim_data
             .impulse_joint_set
@@ -494,18 +443,18 @@ crate::jni_scene_fn_ret! {
                     Some(id_b as LevelColliderID)
                 },
 
-                pos_a: DVec3::new(local_x_a as f64, local_y_a as f64, local_z_a as f64),
-                pos_b: DVec3::new(local_x_b as f64, local_y_b as f64, local_z_b as f64),
+                pos_a: DVec3::new(local_x_a, local_y_a, local_z_a),
+                pos_b: DVec3::new(local_x_b, local_y_b, local_z_b),
 
                 normal_a: DVec3::new(0.0, 0.0, 0.0),
                 normal_b: DVec3::new(0.0, 0.0, 0.0),
 
-                rotation_a: Some(rotation_a),
-                rotation_b: Some(rotation_b),
+                rotation_a: None,
+                rotation_b: None,
 
                 handle,
 
-                fixed: false,
+                fixed: true,
                 contacts_enabled: true,
             },
         );

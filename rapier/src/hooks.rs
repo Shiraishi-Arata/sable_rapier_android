@@ -261,7 +261,7 @@ impl SablePhysicsHooks {
             ]
         };
 
-        let args: Vec<jvalue> = args.iter().map(|v| JValue::as_jni(v)).collect();
+        let args: Vec<jvalue> = args.iter().map(|v| v.as_jni()).collect();
 
         let mut env = current_step_vm
             .attach_current_thread_as_daemon()

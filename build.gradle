@@ -15,26 +15,18 @@ def ndkDir = localProperties.getProperty('ndk.dir') ?: "${sdkDir}/ndk/27.3.13750
 
 def rustProjectDir = file("rapier")
 def apiLevel = "21"
-
 tasks.register('compileRustAndroid', Exec) {
     group = 'rust'
     workingDir rustProjectDir
     environment "ANDROID_NDK_HOME", ndkDir
     
-    commandLine 'cargo', 'ndk',
+    commandLine(['cargo', 'ndk',
         '-t', 'arm64-v8a', 
         '-t', 'armeabi-v7a', 
         '-t', 'x86_64', 
         '-t', 'x86', 
         '--platform', apiLevel,
-        'build', '--release'
-}
-
-tasks.register('buildRustNatives') {
-    group = 'build'
-    description = 'Compiles all Rust natives using cargo-ndk.'
-    dependsOn compileRustAndroid
-    finalizedBy 'copyRustNatives'
+        'build', '--release'])
 }
 
 tasks.register('copyRustNatives', Copy) {
@@ -53,4 +45,13 @@ tasks.register('copyRustNatives', Copy) {
         }
     }
 }
+
+tasks.register('buildRustNatives') {
+    group = 'build'
+    description = 'Compiles all Rust natives using cargo-ndk.'
+    dependsOn compileRustAndroid
+    finalizedBy 'copyRustNatives'
+}
+
+
 

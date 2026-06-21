@@ -272,8 +272,8 @@ crate::jni_scene_fn_ret! {
     }
 }
 
-crate::jni_scene_fn_ret! {
-    Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeRope; _env, (id: jlong), -> jlong, scene, {
+crate::jni_scene_fn! {
+    Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_removeRope; _env, (id: jlong), scene, {
         let mut sable_data = scene.sable_data.write().unwrap();
         let mut sim_data = scene.sim_data.write().unwrap();
         let sim_data = &mut *sim_data;
@@ -289,7 +289,6 @@ crate::jni_scene_fn_ret! {
                 true,
             );
         }
-        id
     }
 }
 
