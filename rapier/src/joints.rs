@@ -435,7 +435,7 @@ crate::jni_scene_fn_ret! {
 }
 
 crate::jni_scene_fn_ret! {
-    Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addFreeConstraint; _env, (id_a: jint, id_b: jint, local_x_a: jdouble, local_y_a: jdouble, local_z_a: jdouble, local_x_b: jdouble, local_y_b: jdouble, local_z_b: jdouble, local_q_x: jdouble, local_q_y: jdouble, local_q_z: jdouble, local_q_w: jdouble), -> SableJointHandle, scene, {
+    Java_dev_ryanhcode_sable_physics_impl_rapier_Rapier3D_addFreeConstraint; _env, (id_a: jint, id_b: jint, local_x_a: jdouble, local_y_a: jdouble, local_z_a: jdouble, local_q_x_a: jdouble, local_q_y_a: jdouble, local_q_z_a: jdouble, local_q_w_a: jdouble, local_x_b: jdouble, local_y_b: jdouble, local_z_b: jdouble, local_q_x_b: jdouble, local_q_y_b: jdouble, local_q_z_b: jdouble, local_q_w_b: jdouble, locked_axes_mask: jint), -> SableJointHandle, scene, {
         let mut sable_data = scene.sable_data.write().unwrap();
         let mut sim_data = scene.sim_data.write().unwrap();
 
@@ -451,17 +451,27 @@ crate::jni_scene_fn_ret! {
             sable_data.rigid_bodies[&(id_b as LevelColliderID)]
         };
 
-        let mut joint = GenericJointBuilder::new(JointAxesMask::empty()).softness(
-            SpringCoefficients::new(JOINT_SPRING_FREQUENCY, JOINT_SPRING_DAMPING_RATIO),
+        let locked_axes = JointAxesMask::from_bits_truncate(locked_axes_mask as u8);
+
+        let rotation_a = Quat::from_xyzw(
+            local_q_x_a as Real,
+            local_q_y_a as Real,
+            local_q_z_a as Real,
+            local_q_w_a as Real,
+        );
+        let rotation_b = Quat::from_xyzw(
+            local_q_x_b as Real,
+            local_q_y_b as Real,
+            local_q_z_b as Real,
+            local_q_w_b as Real,
         );
 
-        let quat = Quat::from_xyzw(
-            local_q_x as Real,
-            local_q_y as Real,
-            local_q_z as Real,
-            local_q_w as Real,
-        );
-        joint.0.local_frame1.rotation = quat;
+        let mut joint = GenericJointBuilder::new(locked_axes).softness(SpringCoefficients::new(
+            JOINT_SPRING_FREQUENCY,
+            JOINT_SPRING_DAMPING_RATIO,
+        ));
+        joint.0.local_frame1.rotation = rotation_a;
+        joint.0.local_frame2.rotation = rotation_b;
 
         let handle = sim_data
             .impulse_joint_set
@@ -484,18 +494,18 @@ crate::jni_scene_fn_ret! {
                     Some(id_b as LevelColliderID)
                 },
 
-                pos_a: DVec3::new(local_x_a, local_y_a, local_z_a),
-                pos_b: DVec3::new(local_x_b, local_y_b, local_z_b),
+                pos_a: DVec3::new(local_x_a as f64, local_y_a as f64, local_z_a as f64),
+                pos_b: DVec3::new(local_x_b as f64, local_y_b as f64, local_z_b as f64),
 
                 normal_a: DVec3::new(0.0, 0.0, 0.0),
                 normal_b: DVec3::new(0.0, 0.0, 0.0),
 
-                rotation_a: None,
-                rotation_b: None,
+                rotation_a: Some(rotation_a),
+                rotation_b: Some(rotation_b),
 
                 handle,
 
-                fixed: true,
+                fixed: false,
                 contacts_enabled: true,
             },
         );
