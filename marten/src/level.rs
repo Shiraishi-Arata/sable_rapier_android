@@ -96,6 +96,8 @@ pub struct VoxelColliderData {
 
     pub contact_method: Option<SableMethodID>,
 
+    pub collision_callback_v2: bool,
+
     pub dynamic: bool,
 }
 
